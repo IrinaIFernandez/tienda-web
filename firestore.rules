@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // El catálogo es público para la tienda; los cambios se hacen desde Firebase Console.
+    match /productos/{productoId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // El navegador puede crear pedidos pendientes, pero nunca leerlos ni modificarlos.
+    match /ordenes/{ordenId} {
+      allow create: if
+        request.resource.data.keys().hasAll(['comprador', 'items', 'total', 'fecha', 'estado'])
+        && request.resource.data.keys().hasOnly(['comprador', 'items', 'total', 'fecha', 'estado'])
+        && request.resource.data.comprador is map
+        && request.resource.data.comprador.keys().hasAll(['nombre', 'email', 'telefono'])
+        && request.resource.data.comprador.keys().hasOnly(['nombre', 'email', 'telefono'])
+        && request.resource.data.comprador.nombre is string
+        && request.resource.data.comprador.nombre.size() >= 2
+        && request.resource.data.comprador.nombre.size() <= 100
+        && request.resource.data.comprador.email is string
+        && request.resource.data.comprador.email.size() >= 5
+        && request.resource.data.comprador.email.size() <= 150
+        && request.resource.data.comprador.telefono is string
+        && request.resource.data.comprador.telefono.size() <= 40
+        && request.resource.data.items is list
+        && request.resource.data.items.size() >= 1
+        && request.resource.data.items.size() <= 25
+        && (request.resource.data.total is int || request.resource.data.total is float)
+        && request.resource.data.total >= 0
+        && request.resource.data.fecha == request.time
+        && request.resource.data.estado == 'pendiente';
+
+      allow read, update, delete: if false;
+    }
+  }
+}
